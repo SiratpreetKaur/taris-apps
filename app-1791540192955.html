@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>TARIS Piano Tiles</title>
+    <style>
+        :root {
+            --bg-color: #f0f2f5;
+            --tile-color: #2c3e50;
+            --hit-color: #bdc3c7;
+            --wrong-color: #e74c3c;
+            --success-color: #2ecc71;
+            --lane-border: #dfe6e9;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #game-container {
+            position: relative;
+            width: 100%;
+            max-width: 450px;
+            height: 100vh;
+            background: white;
+            box-shadow: 0 0 20px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .lane {
+            position: absolute;
+            top: 0;
+            width: 25%;
+            height: 100%;
+            border-right: 1px solid var(--lane-border);
+        }
+
+        .lane:last-child {
+            border-right: none;
+        }
+
+        .tile {
+            position: absolute;
+            width: 100%;
+            background-color: var(--tile-color);
+            cursor: pointer;
+            border-radius: 4px;
+            transition: background-color 0.1s;
+        }
+
+        .tile.hit {
+            background-color: var(--hit-color) !important;
+        }
+
+        #score-display {
+            position: absolute;
+            top: 20px;
+            left: 0;
+            right: 0;
+            text-align: center;
+            font-size: 48px;
+            font-weight: bold;
+            color: #34495e;
+            z-index: 10;
+            pointer-events: none;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+            color: white;
+            text-align: center;
+        }
+
+        h1 {
+            font-size: 3rem;
+            margin-bottom: 10px;
+            letter-spacing: 2px;
+        }
+
+        p {
+            margin-bottom: 20px;
+            font-size: 1.2rem;
+            opacity: 0.8;
+        }
+
+        .btn {
+            padding: 15px 40px;
+            font-size: 1.2rem;
+            background: var(--success-color);
+            color: white;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: transform 0.2s, background 0.2s;
+        }
+
+        .btn:hover {
+            transform: scale(1.05);
+            background: #27ae60;
+        }
+
+        #game-over {
+            display: none;
+        }
+
+        .ripple {
+            position: absolute;
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            transform: scale(0);
+            animation: ripple-animation 0.4s linear;
+            pointer-events: none;
+        }
+
+        @keyframes ripple-animation {
+            to {
+                transform: scale(4);
+                opacity: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="game-container">
+        <div id="score-display">0</div>
+        
+        <div class="lane" style="left: 0%" data-lane="0"></div>
+        <div class="lane" style="left: 25%" data-lane="1"></div>
+        <div class="lane" style="left: 50%" data-lane="2"></div>
+        <div class="lane" style="left: 75%" data-lane="3"></div>
+
+        <div id="start-screen" class="overlay">
+            <h1>PIANO TILES</h1>
+            <p>Don't tap the white tiles!</p>
+            <button class="btn" onclick="startGame()">START GAME</button>
+        </div>
+
+        <div id="game-over" class="overlay">
+            <h1>GAME OVER</h1>
+            <p id="final-score">Score: 0</p>
+            <button class="btn" onclick="startGame()">TRY AGAIN</button>
+        </div>
+    </div>
+
+    <script>
+        const container = document.getElementById('game-container');
+        const scoreDisplay = document.getElementById('score-display');
+        const startScreen = document.getElementById('start-screen');
+        const gameOverScreen = document.getElementById('game-over');
+        const finalScoreText = document.getElementById('final-score');
+        const lanes = document.querySelectorAll('.lane');
+
+        let score = 0;
+        let speed = 4;
+        let gameActive = false;
+        let tiles = [];
+        let animationFrame;
+        let audioCtx;
+        
+        // Musical notes frequency map
+        const notes = [
+            261.63, // C4
+            293.66, // D4
+            329.63, // E4
+            349.23, // F4
+            392.00, // G4
+            440.00, // A4
+            493.88, // B4
+            523.25  // C5
+        ];
+
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+        }
+
+        function playNote(index) {
+            if (!audioCtx) return;
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            
+            osc.type = 'sine';
+            // Use score to cycle through notes
+            const noteIdx = (score + index) % notes.length;
+            osc.frequency.setValueAtTime(notes[noteIdx], audioCtx.currentTime);
+            
+            gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.5);
+            
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            
+            osc.start();
+            osc.stop(audioCtx.currentTime + 0.5);
+        }
+
+        class Tile {
+            constructor(laneIndex) {
+                this.laneIndex = laneIndex;
+                this.width = container.offsetWidth / 4;
+                this.height = container.offsetHeight / 4;
+                this.y = -this.height;
+                this.hit = false;
+                
+                this.element = document.createElement('div');
+                this.element.className = 'tile';
+                this.element.style.height = this.height + 'px';
+                this.element.style.top = this.y + 'px';
+                
+                lanes[laneIndex].appendChild(this.element);
+            }
+
+            update() {
+                this.y += speed;
+                this.element.style.top = this.y + 'px';
+
+                if (this.y > container.offsetHeight) {
+                    if (!this.hit) {
+                        endGame();
+                    } else {
+                        this.remove();
+                        return true;
+                    }
+                }
+                return false;
+            }
+
+            remove() {
+                this.element.remove();
+            }
+        }
+
+        function startGame() {
+            initAudio();
+            score = 0;
+            speed = 5;
+            gameActive = true;
+            tiles.forEach(t => t.remove());
+            tiles = [];
+            scoreDisplay.innerText = '0';
+            startScreen.style.display = 'none';
+            gameOverScreen.style.display = 'none';
+            
+            spawnTile();
+            gameLoop();
+        }
+
+        function spawnTile() {
+            const laneIndex = Math.floor(Math.random() * 4);
+            tiles.push(new Tile(laneIndex));
+        }
+
+        function gameLoop() {
+            if (!gameActive) return;
+
+            // Move tiles
+            for (let i = tiles.length - 1; i >= 0; i--) {
+                const isOffScreen = tiles[i].update();
+                if (isOffScreen) {
+                    tiles.splice(i, 1);
+                }
+            }
+
+            // Spawn new tiles
+            const lastTile = tiles[tiles.length - 1];
+            if (lastTile && lastTile.y > 0) {
+                spawnTile();
+            }
+
+            // Gradually increase speed
+            speed += 0.001;
+
+            animationFrame = requestAnimationFrame(gameLoop);
+        }
+
+        function endGame() {
+            gameActive = false;
+            cancelAnimationFrame(animationFrame);
+            finalScoreText.innerText = `Score: ${score}`;
+            gameOverScreen.style.display = 'flex';
+        }
+
+        // Handle Input
+        container.addEventListener('mousedown', handleInput);
+        container.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            handleInput(e.touches[0]);
+        }, {passive: false});
+
+        function handleInput(e) {
+            if (!gameActive) return;
+
+            const rect = container.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            const laneIndex = Math.floor((x / rect.width) * 4);
+
+            let hit = false;
+            // Check tiles in the clicked lane
+            for (let i = 0; i < tiles.length; i++) {
+                const tile = tiles[i];
+                if (tile.laneIndex === laneIndex && !tile.hit) {
+                    const tileTop = tile.y;
+                    const tileBottom = tile.y + tile.height;
+                    
+                    // Simple logic: tap anywhere if it's the lowest unhit tile in the lane
+                    // In true piano tiles, we usually check the bottom-most active tile overall
+                    const lowestUnhit = tiles.find(t => !t.hit);
+                    
+                    if (tile === lowestUnhit) {
+                        tile.hit = true;
+                        tile.element.classList.add('hit');
+                        score++;
+                        scoreDisplay.innerText = score;
+                        playNote(laneIndex);
+                        createRipple(e.clientX, e.clientY);
+                        hit = true;
+                        break;
+                    }
+                }
+            }
+
+            if (!hit) {
+                // Flash red on wrong tap
+                container.style.backgroundColor = '#ff6b6b';
+                setTimeout(() => container.style.backgroundColor = 'white', 100);
+                endGame();
+            }
+        }
+
+        function createRipple(x, y) {
+            const ripple = document.createElement('div');
+            ripple.className = 'ripple';
+            const size = 100;
+            ripple.style.width = ripple.style.height = size + 'px';
+            ripple.style.left = (x - size/2) + 'px';
+            ripple.style.top = (y - size/2) + 'px';
+            document.body.appendChild(ripple);
+            setTimeout(() => ripple.remove(), 400);
+        }
+
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            if (gameActive) endGame();
+        });
+    </script>
+</body>
+</html>
