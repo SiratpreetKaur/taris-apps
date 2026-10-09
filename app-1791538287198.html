@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TARIS Nexus | Personal Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --card-bg: rgba(30, 41, 59, 0.7);
+            --accent: #38bdf8;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --success: #4ade80;
+            --danger: #fb7185;
+            --glass-border: rgba(255, 255, 255, 0.1);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Inter', sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            background-image: 
+                radial-gradient(circle at 20% 20%, rgba(56, 189, 248, 0.15) 0%, transparent 40%),
+                radial-gradient(circle at 80% 80%, rgba(139, 92, 246, 0.15) 0%, transparent 40%);
+            color: var(--text-main);
+            min-height: 100vh;
+            padding: 2rem;
+            display: flex;
+            justify-content: center;
+        }
+
+        .container {
+            max-width: 1200px;
+            width: 100%;
+            display: grid;
+            grid-template-columns: repeat(12, 1fr);
+            grid-gap: 1.5rem;
+        }
+
+        /* Generic Card Style */
+        .card {
+            background: var(--card-bg);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--glass-border);
+            border-radius: 24px;
+            padding: 1.5rem;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            transition: transform 0.3s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+        }
+
+        /* Header / Greeting */
+        .header-card {
+            grid-column: span 12;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .greeting h1 {
+            font-size: 2rem;
+            font-weight: 700;
+            background: linear-gradient(to right, #fff, #94a3b8);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .time-display {
+            text-align: right;
+        }
+
+        #clock {
+            font-size: 2.5rem;
+            font-weight: 700;
+            letter-spacing: -1px;
+        }
+
+        #date {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+        }
+
+        /* Task Manager */
+        .tasks-card {
+            grid-column: span 8;
+        }
+
+        @media (max-width: 900px) {
+            .tasks-card { grid-column: span 12; }
+            .sidebar-card { grid-column: span 12; }
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .card-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .input-group {
+            display: flex;
+            gap: 0.75rem;
+            margin-bottom: 1.5rem;
+        }
+
+        input[type="text"] {
+            flex: 1;
+            background: rgba(15, 23, 42, 0.5);
+            border: 1px solid var(--glass-border);
+            border-radius: 12px;
+            padding: 0.75rem 1rem;
+            color: white;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        input[type="text"]:focus {
+            border-color: var(--accent);
+        }
+
+        button.btn-add {
+            background: var(--accent);
+            color: #000;
+            border: none;
+            border-radius: 12px;
+            padding: 0 1.5rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: opacity 0.2s;
+        }
+
+        button.btn-add:hover {
+            opacity: 0.9;
+        }
+
+        .task-list {
+            list-style: none;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .task-item {
+            display: flex;
+            align-items: center;
+            padding: 1rem;
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 12px;
+            margin-bottom: 0.75rem;
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .task-item.completed span {
+            text-decoration: line-through;
+            color: var(--text-muted);
+        }
+
+        .task-checkbox {
+            width: 20px;
+            height: 20px;
+            border-radius: 6px;
+            border: 2px solid var(--accent);
+            margin-right: 1rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .task-checkbox.checked::after {
+            content: '✓';
+            font-size: 14px;
+            color: var(--accent);
+        }
+
+        .task-text {
+            flex: 1;
+        }
+
+        .delete-btn {
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            padding: 5px;
+            transition: color 0.2s;
+        }
+
+        .delete-btn:hover {
+            color: var(--danger);
+        }
+
+        /* Sidebar Widgets */
+        .sidebar-card {
+            grid-column: span 4;
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
+        .widget {
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 16px;
+            padding: 1.25rem;
+        }
+
+        .quote-widget {
+            font-style: italic;
+            line-height: 1.6;
+            color: var(--text-muted);
+            border-left: 3px solid var(--accent);
+        }
+
+        .weather-widget {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .temp {
+            font-size: 2rem;
+            font-weight: 700;
+        }
+
+        .condition {
+            text-align: right;
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        /* Icon Helper */
+        .icon {
+            width: 20px;
+            height: 20px;
+            stroke: currentColor;
+            stroke-width: 2;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+            fill: none;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <!-- Header -->
+        <header class="card header-card">
+            <div class="greeting">
+                <h1 id="welcome-msg">Hello, Explorer</h1>
+                <p id="quote-line">Your personal command center is ready.</p>
+            </div>
+            <div class="time-display">
+                <div id="clock">00:00:00</div>
+                <div id="date">Monday, January 1st</div>
+            </div>
+        </header>
+
+        <!-- Main Content: Tasks -->
+        <main class="card tasks-card">
+            <div class="card-header">
+                <h2 class="card-title">
+                    <svg class="icon" viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"></path><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg>
+                    Focus Tasks
+                </h2>
+                <span id="task-count" style="font-size: 0.8rem; color: var(--text-muted);">0 active</span>
+            </div>
+            
+            <div class="input-group">
+                <input type="text" id="task-input" placeholder="What's the main focus for today?" autocomplete="off">
+                <button class="btn-add" id="add-task-btn">Add Task</button>
+            </div>
+
+            <ul class="task-list" id="task-list">
+                <!-- Tasks will appear here -->
+            </ul>
+        </main>
+
+        <!-- Sidebar -->
+        <aside class="sidebar-card">
+            <div class="card" style="background: transparent; border: none; padding: 0; box-shadow: none;">
+                <div class="widget weather-widget">
+                    <div>
+                        <div class="temp">22°C</div>
+                        <div style="font-size: 0.8rem; color: var(--text-muted);">Local Weather</div>
+                    </div>
+                    <div class="condition">
+                        <svg class="icon" style="width: 40px; height: 40px; color: #fbbf24;" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="4.22" x2="19.78" y2="5.64"></line></svg>
+                        <div style="margin-top: 5px;">Clear Sky</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card" style="background: transparent; border: none; padding: 0; box-shadow: none;">
+                <div class="widget quote-widget">
+                    <p id="daily-quote">"The best way to predict the future is to create it."</p>
+                    <p style="font-size: 0.7rem; margin-top: 10px; opacity: 0.6;" id="quote-author">— Peter Drucker</p>
+                </div>
+            </div>
+
+            <div class="card" style="background: transparent; border: none; padding: 0; box-shadow: none;">
+                <div class="widget" style="text-align: center;">
+                    <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.5rem;">Productivity Pulse</p>
+                    <div style="height: 6px; width: 100%; background: rgba(255,255,255,0.1); border-radius: 10px; overflow: hidden;">
+                        <div id="progress-bar" style="height: 100%; width: 0%; background: var(--accent); transition: width 0.5s ease;"></div>
+                    </div>
+                    <p id="progress-text" style="font-size: 0.7rem; margin-top: 0.5rem;">0% complete</p>
+                </div>
+            </div>
+        </aside>
+    </div>
+
+    <script>
+        // DOM Elements
+        const clockEl = document.getElementById('clock');
+        const dateEl = document.getElementById('date');
+        const taskInput = document.getElementById('task-input');
+        const addTaskBtn = document.getElementById('add-task-btn');
+        const taskList = document.getElementById('task-list');
+        const taskCountEl = document.getElementById('task-count');
+        const progressBar = document.getElementById('progress-bar');
+        const progressText = document.getElementById('progress-text');
+        const welcomeMsg = document.getElementById('welcome-msg');
+        const dailyQuote = document.getElementById('daily-quote');
+        const quoteAuthor = document.getElementById('quote-author');
+
+        // State
+        let tasks = JSON.parse(localStorage.getItem('nexus_tasks')) || [];
+
+        // Quotes Array
+        const quotes = [
+            { q: "Focus on being productive instead of busy.", a: "Tim Ferriss" },
+            { q: "Your mind is for having ideas, not holding them.", a: "David Allen" },
+            { q: "Do the hard jobs first. The easy jobs will take care of themselves.", a: "Dale Carnegie" },
+            { q: "Energy and persistence conquer all things.", a: "Benjamin Franklin" },
+            { q: "The only way to do great work is to love what you do.", a: "Steve Jobs" }
+        ];
+
+        // Initialize
+        function init() {
+            updateTime();
+            setInterval(updateTime, 1000);
+            renderTasks();
+            setRandomQuote();
+            setGreeting();
+        }
+
+        // Time & Date
+        function updateTime() {
+            const now = new Date();
+            const timeStr = now.toLocaleTimeString('en-US', { hour12: false });
+            const dateStr = now.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+            
+            clockEl.textContent = timeStr;
+            dateEl.textContent = dateStr;
+        }
+
+        function setGreeting() {
+            const hour = new Date().getHours();
+            if (hour < 12) welcomeMsg.textContent = "Good Morning, Explorer";
+            else if (hour < 18) welcomeMsg.textContent = "Good Afternoon, Explorer";
+            else welcomeMsg.textContent = "Good Evening, Explorer";
+        }
+
+        // Quote
+        function setRandomQuote() {
+            const random = quotes[Math.floor(Math.random() * quotes.length)];
+            dailyQuote.textContent = `"${random.q}"`;
+            quoteAuthor.textContent = `— ${random.a}`;
+        }
+
+        // Tasks Logic
+        function renderTasks() {
+            taskList.innerHTML = '';
+            tasks.forEach((task, index) => {
+                const li = document.createElement('li');
+                li.className = `task-item ${task.completed ? 'completed' : ''}`;
+                
+                li.innerHTML = `
+                    <div class="task-checkbox ${task.completed ? 'checked' : ''}" onclick="toggleTask(${index})"></div>
+                    <span class="task-text">${task.text}</span>
+                    <button class="delete-btn" onclick="deleteTask(${index})">
+                        <svg class="icon" viewBox="0 0 24 24"><path d="M3 6h18"></path><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                    </button>
+                `;
+                taskList.appendChild(li);
+            });
+            updateStats();
+            saveTasks();
+        }
+
+        function addTask() {
+            const text = taskInput.value.trim();
+            if (text) {
+                tasks.push({ text, completed: false });
+                taskInput.value = '';
+                renderTasks();
+            }
+        }
+
+        function toggleTask(index) {
+            tasks[index].completed = !tasks[index].completed;
+            renderTasks();
+        }
+
+        function deleteTask(index) {
+            tasks.splice(index, 1);
+            renderTasks();
+        }
+
+        function updateStats() {
+            const total = tasks.length;
+            const completed = tasks.filter(t => t.completed).length;
+            const active = total - completed;
+            
+            taskCountEl.textContent = `${active} active tasks`;
+            
+            const percentage = total === 0 ? 0 : Math.round((completed / total) * 100);
+            progressBar.style.width = `${percentage}%`;
+            progressText.textContent = `${percentage}% completed`;
+        }
+
+        function saveTasks() {
+            localStorage.setItem('nexus_tasks', JSON.stringify(tasks));
+        }
+
+        // Event Listeners
+        addTaskBtn.addEventListener('click', addTask);
+        taskInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') addTask();
+        });
+
+        // Run App
+        init();
+    </script>
+</body>
+</html>
