@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Archmage's Sigil | Magic Puzzle</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Raleway:wght@300;400&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #0a0e14;
+            --panel-color: #1a1f2c;
+            --accent-gold: #d4af37;
+            --glow-blue: #00d4ff;
+            --dormant: #2a2a3a;
+            --active: #00d4ff;
+            --text-light: #e0e0e0;
+        }
+
+        * {
+            box-sizing: border-box;
+            user-select: none;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-light);
+            font-family: 'Raleway', sans-serif;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            overflow: hidden;
+            background-image: 
+                radial-gradient(circle at 20% 30%, rgba(0, 212, 255, 0.05) 0%, transparent 40%),
+                radial-gradient(circle at 80% 70%, rgba(212, 175, 55, 0.05) 0%, transparent 40%);
+        }
+
+        h1 {
+            font-family: 'Cinzel', serif;
+            color: var(--accent-gold);
+            font-size: 2.5rem;
+            margin-bottom: 0.5rem;
+            text-shadow: 0 0 15px rgba(212, 175, 55, 0.5);
+            letter-spacing: 3px;
+        }
+
+        .subtitle {
+            font-size: 0.9rem;
+            color: #888;
+            margin-bottom: 2rem;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        #game-container {
+            position: relative;
+            background: var(--panel-color);
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 0 40px rgba(0, 0, 0, 0.7), inset 0 0 20px rgba(212, 175, 55, 0.1);
+            border: 1px solid rgba(212, 175, 55, 0.3);
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(5, 70px);
+            grid-template-rows: repeat(5, 70px);
+            gap: 12px;
+        }
+
+        .tile {
+            width: 70px;
+            height: 70px;
+            background: var(--dormant);
+            border-radius: 8px;
+            cursor: pointer;
+            position: relative;
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            overflow: hidden;
+        }
+
+        .tile::before {
+            content: '✧';
+            font-size: 1.5rem;
+            color: rgba(255, 255, 255, 0.1);
+            transition: all 0.4s ease;
+        }
+
+        .tile.active {
+            background: rgba(0, 212, 255, 0.15);
+            border: 1px solid var(--glow-blue);
+            box-shadow: 0 0 15px var(--glow-blue), inset 0 0 10px var(--glow-blue);
+        }
+
+        .tile.active::before {
+            content: '✦';
+            color: var(--glow-blue);
+            text-shadow: 0 0 10px var(--glow-blue);
+        }
+
+        .tile:hover {
+            transform: scale(1.05);
+            border-color: var(--accent-gold);
+        }
+
+        .stats {
+            margin-top: 2rem;
+            display: flex;
+            gap: 40px;
+            font-family: 'Cinzel', serif;
+        }
+
+        .stat-box {
+            text-align: center;
+        }
+
+        .stat-value {
+            display: block;
+            font-size: 1.5rem;
+            color: var(--accent-gold);
+        }
+
+        .controls {
+            margin-top: 2rem;
+            display: flex;
+            gap: 15px;
+        }
+
+        button {
+            background: transparent;
+            border: 1px solid var(--accent-gold);
+            color: var(--accent-gold);
+            padding: 10px 25px;
+            font-family: 'Cinzel', serif;
+            cursor: pointer;
+            border-radius: 5px;
+            transition: all 0.3s;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        button:hover {
+            background: var(--accent-gold);
+            color: var(--bg-color);
+            box-shadow: 0 0 15px var(--accent-gold);
+        }
+
+        /* Modal / Overlay */
+        #win-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(10, 14, 20, 0.9);
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+            backdrop-filter: blur(10px);
+        }
+
+        #win-overlay h2 {
+            font-family: 'Cinzel', serif;
+            color: var(--accent-gold);
+            font-size: 3rem;
+            margin-bottom: 1rem;
+        }
+
+        /* Particle effect background layer */
+        #canvas-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            z-index: -1;
+        }
+
+        @media (max-width: 500px) {
+            .grid {
+                grid-template-columns: repeat(5, 55px);
+                grid-template-rows: repeat(5, 55px);
+                gap: 8px;
+            }
+            .tile {
+                width: 55px;
+                height: 55px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <canvas id="canvas-bg"></canvas>
+
+    <h1>The Archmage's Sigil</h1>
+    <div class="subtitle">Awaken all runes to restore the seal</div>
+
+    <div id="game-container">
+        <div class="grid" id="grid"></div>
+    </div>
+
+    <div class="stats">
+        <div class="stat-box">
+            <span class="stat-label">Moves</span>
+            <span class="stat-value" id="move-count">0</span>
+        </div>
+        <div class="stat-box">
+            <span class="stat-label">Runes Active</span>
+            <span class="stat-value" id="active-count">0/25</span>
+        </div>
+    </div>
+
+    <div class="controls">
+        <button onclick="resetGame()">Reset Sigil</button>
+        <button onclick="scrambleGrid()">New Prophecy</button>
+    </div>
+
+    <div id="win-overlay">
+        <h2>Sigil Restored</h2>
+        <p id="win-stats">You solved the puzzle in 0 moves!</p>
+        <button onclick="closeWinOverlay()">Continue Journey</button>
+    </div>
+
+    <script>
+        const gridElement = document.getElementById('grid');
+        const moveDisplay = document.getElementById('move-count');
+        const activeDisplay = document.getElementById('active-count');
+        const winOverlay = document.getElementById('win-overlay');
+        const winStatsText = document.getElementById('win-stats');
+        
+        const SIZE = 5;
+        let gridState = [];
+        let moves = 0;
+
+        // Initialize background particles
+        const canvas = document.getElementById('canvas-bg');
+        const ctx = canvas.getContext('2d');
+        let particles = [];
+
+        function resize() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+
+        window.addEventListener('resize', resize);
+        resize();
+
+        class Particle {
+            constructor() {
+                this.reset();
+            }
+            reset() {
+                this.x = Math.random() * canvas.width;
+                this.y = Math.random() * canvas.height;
+                this.size = Math.random() * 2;
+                this.speedX = (Math.random() - 0.5) * 0.5;
+                this.speedY = (Math.random() - 0.5) * 0.5;
+                this.life = Math.random() * 0.5 + 0.2;
+            }
+            update() {
+                this.x += this.speedX;
+                this.y += this.speedY;
+                if (this.x < 0 || this.x > canvas.width || this.y < 0 || this.y > canvas.height) {
+                    this.reset();
+                }
+            }
+            draw() {
+                ctx.fillStyle = `rgba(0, 212, 255, ${this.life})`;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+
+        for (let i = 0; i < 100; i++) particles.push(new Particle());
+
+        function animate() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            particles.forEach(p => {
+                p.update();
+                p.draw();
+            });
+            requestAnimationFrame(animate);
+        }
+        animate();
+
+        // Game Logic
+        function createGrid() {
+            gridElement.innerHTML = '';
+            gridState = Array(SIZE).fill().map(() => Array(SIZE).fill(false));
+            
+            for (let r = 0; r < SIZE; r++) {
+                for (let c = 0; c < SIZE; c++) {
+                    const tile = document.createElement('div');
+                    tile.classList.add('tile');
+                    tile.dataset.row = r;
+                    tile.dataset.col = c;
+                    tile.addEventListener('click', () => handleTileClick(r, c));
+                    gridElement.appendChild(tile);
+                }
+            }
+            scrambleGrid();
+        }
+
+        function handleTileClick(r, c, isScrambling = false) {
+            toggleTile(r, c);
+            toggleTile(r - 1, c);
+            toggleTile(r + 1, c);
+            toggleTile(r, c - 1);
+            toggleTile(r, c + 1);
+
+            if (!isScrambling) {
+                moves++;
+                updateUI();
+                checkWin();
+            }
+        }
+
+        function toggleTile(r, c) {
+            if (r >= 0 && r < SIZE && c >= 0 && c < SIZE) {
+                gridState[r][c] = !gridState[r][c];
+                const index = r * SIZE + c;
+                const tileElement = gridElement.children[index];
+                if (gridState[r][c]) {
+                    tileElement.classList.add('active');
+                } else {
+                    tileElement.classList.remove('active');
+                }
+            }
+        }
+
+        function updateUI() {
+            moveDisplay.innerText = moves;
+            const activeCount = gridState.flat().filter(s => s).length;
+            activeDisplay.innerText = `${activeCount}/${SIZE * SIZE}`;
+        }
+
+        function scrambleGrid() {
+            moves = 0;
+            // Start from all false (dormant)
+            gridState = Array(SIZE).fill().map(() => Array(SIZE).fill(false));
+            const tiles = Array.from(gridElement.children);
+            tiles.forEach(t => t.classList.remove('active'));
+
+            // Apply random moves to ensure solvability
+            const difficulty = 15;
+            for (let i = 0; i < difficulty; i++) {
+                const r = Math.floor(Math.random() * SIZE);
+                const c = Math.floor(Math.random() * SIZE);
+                handleTileClick(r, c, true);
+            }
+            
+            // If by some luck it starts solved, scramble once more
+            if (gridState.flat().every(s => s)) {
+                scrambleGrid();
+            }
+            
+            updateUI();
+        }
+
+        function resetGame() {
+            createGrid();
+        }
+
+        function checkWin() {
+            const allActive = gridState.flat().every(s => s);
+            if (allActive) {
+                setTimeout(() => {
+                    winStatsText.innerText = `The seal is restored! It took you ${moves} mystical manipulations.`;
+                    winOverlay.style.display = 'flex';
+                }, 300);
+            }
+        }
+
+        function closeWinOverlay() {
+            winOverlay.style.display = 'none';
+            scrambleGrid();
+        }
+
+        // Initialize the magic
+        createGrid();
+
+    </script>
+</body>
+</html>
